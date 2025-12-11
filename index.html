@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alarm Clock App</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Poppins, Arial, sans-serif;
+            background: linear-gradient(135deg, #4f8dfd, #6dc7ff);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 420px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 25px;
+            border-radius: 18px;
+            box-shadow: 0px 0px 20px rgba(0,0,0,0.2);
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #time {
+            text-align: center;
+            font-size: 48px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        #date {
+            text-align: center;
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 25px;
+        }
+
+        .inputBox {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        input, select, button {
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #00d4ff;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #00b6da;
+        }
+
+        .alarm-list {
+            margin-top: 20px;
+        }
+
+        .alarm-item {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.25);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .delete-btn {
+            background: #ff5252;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+
+        .delete-btn:hover {
+            background: #e63939;
+        }
+
+        /* Ringing Popup */
+        .ringing-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            width: 300px;
+            box-shadow: 0px 5px 20px black;
+            transition: 0.3s ease;
+        }
+
+        .ringing-box.active {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .ringing-box h2 {
+            color: black;
+            margin-bottom: 20px;
+        }
+
+        .ringing-box button {
+            width: 48%;
+            padding: 10px;
+            margin: 5px;
+            background: #008cff;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+
+        .ringing-box button:hover {
+            background: #0070d1;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Alarm Clock</h1>
+
+    <div id="time"></div>
+    <div id="date"></div>
+
+    <div class="inputBox">
+        <input type="time" id="alarmTime">
+        <select id="tone">
+            <option value="buzz">Buzz Tone</option>
+            <option value="tone1">Tone 1</option>
+            <option value="tone2">Tone 2</option>
+        </select>
+        <button onclick="addAlarm()">Add</button>
+    </div>
+
+    <h3>Your Alarms</h3>
+    <div id="alarmList" class="alarm-list"></div>
+</div>
+
+<div id="ringingBox" class="ringing-box">
+    <h2>Alarm Ringing!</h2>
+    <button onclick="snoozeAlarm()">Snooze</button>
+    <button onclick="dismissAlarm()">Dismiss</button>
+</div>
+
+<!-- Alarm Sounds -->
+<audio id="tone1" src="https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"></audio>
+<audio id="tone2" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+
+<!-- Strong Buzz Tone -->
+<audio id="buzz" src="https://www.fesliyanstudios.com/play-mp3/4381"></audio>
+
+<script>
+
+    // Clock Update
+    function updateClock() {
+        const now = new Date();
+        document.getElementById("time").innerText = now.toLocaleTimeString();
+        document.getElementById("date").innerText = now.toDateString();
+    }
+    setInterval(updateClock, 1000);
+
+    let alarms = [];
+    let currentTone = null;
+
+    function addAlarm() {
+        const time = document.getElementById("alarmTime").value;
+        const tone = document.getElementById("tone").value;
+
+        if (!time) {
+            alert("Select a valid time.");
+            return;
+        }
+
+        const alarm = {
+            id: Date.now(),
+            time: time,
+            tone: tone,
+            active: true
+        };
+
+        alarms.push(alarm);
+        renderAlarms();
+    }
+
+    function renderAlarms() {
+        const list = document.getElementById("alarmList");
+        list.innerHTML = "";
+
+        alarms.forEach(a => {
+            const item = document.createElement("div");
+            item.className = "alarm-item";
+
+            item.innerHTML = `
+                <span>${a.time}</span>
+                <button class="delete-btn" onclick="deleteAlarm(${a.id})">Delete</button>
+            `;
+
+            list.appendChild(item);
+        });
+    }
+
+    function deleteAlarm(id) {
+        alarms = alarms.filter(a => a.id !== id);
+        renderAlarms();
+    }
+
+    // Check Alarms
+    setInterval(() => {
+        const now = new Date();
+        const current = now.toTimeString().slice(0, 5);
+
+        alarms.forEach(a => {
+            if (a.active && a.time === current) {
+                triggerAlarm(a);
+            }
+        });
+
+    }, 1000);
+
+    // Alarm Ringing
+    function triggerAlarm(alarm) {
+        const box = document.getElementById("ringingBox");
+        box.classList.add("active");
+
+        currentTone = document.getElementById(alarm.tone);
+        currentTone.loop = true;   // Buzz continuously
+        currentTone.play();
+    }
+
+    // Snooze = +5 minutes
+    function snoozeAlarm() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 5);
+
+        const newTime = now.toTimeString().slice(0, 5);
+
+        alarms.push({
+            id: Date.now(),
+            time: newTime,
+            tone: "buzz",
+            active: true
+        });
+
+        stopAlarm();
+        renderAlarms();
+    }
+
+    function dismissAlarm() {
+        stopAlarm();
+    }
+
+    function stopAlarm() {
+        const box = document.getElementById("ringingBox");
+        box.classList.remove("active");
+
+        if (currentTone) {
+            currentTone.pause();
+            currentTone.currentTime = 0;
+        }
+    }
+
+</script>
+
+</body>
+</html>
